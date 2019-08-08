@@ -4,5 +4,8 @@
     "undef": true,
     "funcscope": true,
     "varstmt": true,
-    "browser": true
+    "browser": true,
+    "globals": {
+        "indexedDB": true
+    }
 }
