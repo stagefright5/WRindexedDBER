@@ -6,6 +6,7 @@
     "varstmt": true,
     "browser": true,
     "globals": {
-        "indexedDB": true
+        "indexedDB": true,
+        "IDBKeyRange": true
     }
 }
