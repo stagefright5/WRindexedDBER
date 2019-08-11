@@ -293,8 +293,15 @@ class IDB {
         });
     }
 
-    deleteBD() {
-        // delete DB implementation
+    destroyDB() {
+        return new Promise((resolve, reject) => {
+            const delReq = indexedDB.deleteDatabase(this.dbName);
+            delReq.onerror = (e) => { this.__handleNonSuccess(e, reject); };
+            delReq.onabort = (e) => { this.__handleNonSuccess(e, reject); };
+            delReq.onsuccess = (e) => {
+                return resolve('Deleted the DB - ' + this.dbName);
+            };
+        });
     }
 
 
