@@ -59,6 +59,7 @@ class IDB {
         const db = e.target.result;
         const transaction = db.transaction(storeNames, type);
         transaction.oncomplete = (event) => {
+            console.log('closing db...');
             db.close();
         };
         transaction.onabort = (e) => { throw (e); };
@@ -283,6 +284,7 @@ class IDB {
         key: null,
         value: null
     }) {
+        //TODO: Implement multi-record update functionality.
         return new Promise(async (resolve, reject) => {
             const oReq = await this.__openDB(reject);
             oReq.onsuccess = async (e) => {
