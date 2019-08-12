@@ -27,6 +27,11 @@ class IDB {
         let request = indexedDB.open(this.dbName);
         request.onerror = (e) => { this.__handleNonSuccess(e, reject); };
         request.onabort = (e) => { this.__handleNonSuccess(e, reject); };
+        request.onblocked = (e) => {
+            console.log('Transaction blocked.Try again...');
+            this.db.close();
+            throw e;
+        };
         return request;
     }
 
@@ -42,6 +47,11 @@ class IDB {
                 sr.onabort = (e) => { this.__handleNonSuccess(e, reject); };
                 return resolve(sr);
             };
+            Oreq.onblocked = (e) => {
+                console.log('Transaction blocked.Try again...');
+                this.db.close();
+                return reject(e.target);
+            };
         });
     }
 
@@ -54,6 +64,16 @@ class IDB {
         transaction.onabort = (e) => { throw (e); };
         transaction.onerror = (e) => { throw (e); };
         return transaction;
+    }
+
+    __getObjStore(storeName, type) {
+        return new Promise((resolve, reject) => {
+            let Oreq = this.__openDB(reject);
+            Oreq.onerror = (e) => { this.__handleNonSuccess(e, reject); };
+            Oreq.onsuccess = (e) => {
+                return resolve(this.__createTrans(storeName, e, type).objectStore(storeName));
+            };
+        });
     }
 
     /* -------------------------------------------- Public Methods ------------------------------------------------ */
@@ -92,6 +112,7 @@ class IDB {
             sr.onsuccess = (e) => {
                 console.log('closing db...');
                 e.target.result.close();
+                return resolve();
             };
         });
     }
@@ -219,14 +240,6 @@ class IDB {
         });
     }
 
-    getObjStore(storeName, type) {
-        return new Promise((resolve, reject) => {
-            let Oreq = this.__openDB(reject);
-            Oreq.onsuccess = (e) => {
-                return resolve(this.__createTrans(storeName, e, type).objectStore(storeName));
-            };
-        });
-    }
 
     deleteIndex(storeName, index) {
         return new Promise((resolve, reject) => {
@@ -266,10 +279,34 @@ class IDB {
         });
     }
 
+    updateRecord(store, pKey, obj = {
+        key: null,
+        value: null
+    }) {
+        return new Promise(async (resolve, reject) => {
+            const oReq = await this.__openDB(reject);
+            oReq.onsuccess = async (e) => {
+                let data;
+                try {
+                    data = await this.get(store, { value: pKey });
+                } catch (e) {
+                    return reject(e);
+                }
+                data[obj.key] = obj.value;
+                let putReq = (await this.__getObjStore(store, 'readwrite')).put(data);
+                putReq.onerror = (e) => { this.__handleNonSuccess(e, reject); };
+                putReq.onsuccess = (e) => {
+                    resolve(e.target.result);
+                };
+
+            };
+        });
+    }
+
     clearStore(storeName) {
         // delete Store implementation
         return new Promise(async (resolve, reject) => {
-            resolve((await this.getObjStore(storeName, 'readwrite')).clear());
+            resolve((await this.__getObjStore(storeName, 'readwrite')).clear());
         });
     }
 
@@ -316,7 +353,7 @@ class IDB {
 
     getLength(store) {
         return new Promise(async (res, rej) => {
-            (await this.getObjStore(store)).count().onsuccess = (e) => { res(e.target.result); };
+            (await this.__getObjStore(store)).count().onsuccess = (e) => { res(e.target.result); };
         });
     }
 }
